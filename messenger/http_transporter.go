@@ -191,6 +191,7 @@ func (t *HTTPTransporter) Send(ctx context.Context, msg *Message) (sendError err
 
 func (t *HTTPTransporter) send(ctx context.Context, msg *Message) (sendError error) {
 	log.V(2).Infof("Sending message to %v via http\n", msg.UPID)
+	fmt.Printf("Sending message: %v\nto: %v via http\n", string(msg.Bytes), msg.UPID)
 	req, err := t.makeLibprocessRequest(msg)
 	if err != nil {
 		log.Errorf("Failed to make libprocess request: %v\n", err)
@@ -216,6 +217,7 @@ func (t *HTTPTransporter) send(ctx context.Context, msg *Message) (sendError err
 					return &recoverableError{Err: err}
 				}
 				log.Infof("Failed to POST: %v\n", err)
+				fmt.Printf("Failed to POST: %v\n", err)
 				return err
 			}
 			defer resp.Body.Close()
@@ -223,9 +225,11 @@ func (t *HTTPTransporter) send(ctx context.Context, msg *Message) (sendError err
 			// ensure master acknowledgement.
 			if (resp.StatusCode != http.StatusOK) &&
 				(resp.StatusCode != http.StatusAccepted) {
-				msg := fmt.Sprintf("Master %s rejected %s.  Returned status %s.",
-					msg.UPID, msg.RequestURI(), resp.Status)
+				data, _ := ioutil.ReadAll(resp.Body)
+				msg := fmt.Sprintf("Master %s rejected %s.  Returned status %s. Data: %s",
+					msg.UPID, msg.RequestURI(), resp.Status, string(data))
 				log.Warning(msg)
+				fmt.Printf(msg)
 				return fmt.Errorf(msg)
 			}
 			return nil
@@ -320,6 +324,7 @@ func (t *HTTPTransporter) Install(msgName string) {
 
 func (t *HTTPTransporter) install(msgName string) {
 	requestURI := fmt.Sprintf("/%s/%s", t.upid.ID, msgName)
+	fmt.Printf("Installing handler, \nURI: %s\nHandler:", requestURI, t.messageDecoder)
 	t.mux.HandleFunc(requestURI, t.messageDecoder)
 }
 
@@ -395,6 +400,8 @@ func (t *HTTPTransporter) listen() error {
 		port = "0"
 	}
 
+	fmt.Printf("port by now: %v\n", port)
+
 	// NOTE: Explicitly specifies IPv4 because Libprocess
 	// only supports IPv4 for now.
 	ln, err := net.Listen("tcp4", net.JoinHostPort(host, port))
@@ -402,9 +409,12 @@ func (t *HTTPTransporter) listen() error {
 		log.Errorf("HTTPTransporter failed to listen: %v\n", err)
 		return err
 	}
+
+
 	// Save the host:port in case they are not specified in upid.
 	host, port, _ = net.SplitHostPort(ln.Addr().String())
 	log.Infoln("listening on", host, "port", port)
+	fmt.Println("listening on", host, "port", port)
 
 	if len(t.upid.Host) == 0 {
 		t.upid.Host = host
@@ -444,7 +454,13 @@ func (t *HTTPTransporter) start() (upid.UPID, <-chan error) {
 			WriteTimeout: DefaultWriteTimeout,
 			Handler:      t.mux,
 		}
+		fmt.Printf("Server started on %v\n", t.listener.Addr())
 		err := s.Serve(t.listener)
+		fmt.Printf("trying CURL addr:\n")
+		req, _ := http.NewRequest("GET", "http://"+string(t.listener.Addr().String()), nil)
+		resp, err := http.DefaultClient.Do(req)
+		fmt.Printf("Err was: %v, resp was: %v\n", err, resp)
+
 		select {
 		case <-t.shouldQuit:
 			log.V(1).Infof("HTTP server stopped because of shutdown")
@@ -539,6 +555,7 @@ func (t *HTTPTransporter) processOneRequest(from *upid.UPID, request *Request) (
 		return
 	}
 	log.V(2).Infof("Receiving %q %v from %v, length %v", request.Method, request.URL, from, len(data))
+	fmt.Printf("Receiving %q %v from %v, length %v\n", request.Method, request.URL, from, len(data))
 	m := &Message{
 		UPID:  from,
 		Name:  extractNameFromRequestURI(request.RequestURI),

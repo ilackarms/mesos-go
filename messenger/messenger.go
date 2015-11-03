@@ -66,6 +66,7 @@ type MesosMessenger struct {
 // ForHostname creates a new default messenger (HTTP), using UPIDBindingAddress to
 // determine the binding-address used for both the UPID.Host and Transport binding address.
 func ForHostname(proc *process.Process, hostname string, bindingAddress net.IP, port uint16, publishedAddress net.IP) (Messenger, error) {
+	fmt.Printf("Binding port I got was: %s\n", string(port))
 	upid := upid.UPID{
 		ID:   proc.Label(),
 		Port: strconv.Itoa(int(port)),
@@ -88,6 +89,7 @@ func ForHostname(proc *process.Process, hostname string, bindingAddress net.IP, 
 	} else {
 		upid.Host = host
 	}
+	fmt.Printf("Binding port I made was: %s\non host: %s\n", string(upid.Port), upid.Host)
 
 	return NewHttpWithBindingAddress(upid, bindingAddress), nil
 }
@@ -294,6 +296,7 @@ func (m *MesosMessenger) encodeLoop() {
 				defer cancel()
 
 				b, err := proto.Marshal(msg.ProtoMessage)
+				fmt.Printf("MesosMessenger: Encoding message: %s\n", string(b))
 				if err != nil {
 					return err
 				}

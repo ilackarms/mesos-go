@@ -219,6 +219,8 @@ func NewMesosSchedulerDriver(config DriverConfig) (initializedDriver *MesosSched
 	if newMessenger == nil {
 		newMessenger = func() (messenger.Messenger, error) {
 			process := process.New("scheduler")
+			fmt.Printf("Binding new messenger on hostname: %s\nbindingAddress: %s:%s\nPublishedAddr: %s\n\n",
+				string(hostname), string(config.BindingAddress.String()), string(config.BindingPort), string(config.PublishedAddress))
 			return messenger.ForHostname(process, hostname, config.BindingAddress, config.BindingPort, config.PublishedAddress)
 		}
 	}
@@ -507,6 +509,7 @@ func (driver *MesosSchedulerDriver) stopped() bool {
 // ---------------------- Handlers for Events from Master --------------- //
 func (driver *MesosSchedulerDriver) frameworkRegistered(from *upid.UPID, pbMsg proto.Message) {
 	log.V(2).Infoln("Handling scheduler driver framework registered event.")
+	fmt.Printf("Handling scheduler driver framework registered event.")
 
 	msg := pbMsg.(*mesos.FrameworkRegisteredMessage)
 	masterInfo := msg.GetMasterInfo()
@@ -543,6 +546,7 @@ func (driver *MesosSchedulerDriver) frameworkRegistered(from *upid.UPID, pbMsg p
 
 func (driver *MesosSchedulerDriver) frameworkReregistered(from *upid.UPID, pbMsg proto.Message) {
 	log.V(1).Infoln("Handling Scheduler re-registered event.")
+	fmt.Println("Handling Scheduler re-registered event.")
 	msg := pbMsg.(*mesos.FrameworkReregisteredMessage)
 
 	if driver.status == mesos.Status_DRIVER_ABORTED {
@@ -924,11 +928,13 @@ func (driver *MesosSchedulerDriver) registerOnce() bool {
 				Framework: info,
 				Failover:  proto.Bool(failover),
 			}
+			fmt.Printf("Reregistering with master: %v\nwith message:\n%v\n", pid, message)
 		} else {
 			log.V(1).Infof("Registering with master: %v", pid)
 			message = &mesos.RegisterFrameworkMessage{
 				Framework: info,
 			}
+			fmt.Printf("Reregistering with master: %v\nwith message:\n%v\n", pid, message)
 		}
 		if err := driver.send(pid, message); err != nil {
 			log.Errorf("failed to send RegisterFramework message: %v", err)
