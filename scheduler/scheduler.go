@@ -596,13 +596,17 @@ func (driver *MesosSchedulerDriver) resourcesOffered(from *upid.UPID, pbMsg prot
 		log.Errorln("Ignoring offers, Offer count does not match Slave PID count.")
 		return
 	}
+	fmt.Printf("OFFER LIST RECEIVED: \n\n***********************\n\n%v \n\n\n***************\n\n", msg)
 
 	for i, offer := range msg.Offers {
 		if pid, err := upid.Parse(pidStrings[i]); err == nil {
+			fmt.Printf("OFFER RECEIVED: \n%v \n%s \n", offer, pid)
 			driver.cache.putOffer(offer, pid)
 			log.V(2).Infof("Cached offer %s from SlavePID %s", offer.Id.GetValue(), pid)
+			fmt.Printf("Cached offer %s from SlavePID %\ns\n", offer.Id.GetValue(), pid)
 		} else {
 			log.Warningf("Failed to parse offer PID '%v': %v", pid, err)
+			fmt.Printf("Failed to parse offer PID '%v': %v\n", pid, err)
 		}
 	}
 

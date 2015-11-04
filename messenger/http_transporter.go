@@ -410,7 +410,6 @@ func (t *HTTPTransporter) listen() error {
 		return err
 	}
 
-
 	// Save the host:port in case they are not specified in upid.
 	host, port, _ = net.SplitHostPort(ln.Addr().String())
 	log.Infoln("listening on", host, "port", port)
